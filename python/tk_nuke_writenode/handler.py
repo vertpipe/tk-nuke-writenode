@@ -33,7 +33,7 @@ class TankWriteNodeHandler(object):
     """
 
     SG_WRITE_NODE_CLASS = "WriteTank"
-    SG_WRITE_DEFAULT_NAME = "NFA_Write"
+    SG_WRITE_DEFAULT_NAME = "NFA_SG_Write"
     WRITE_NODE_NAME = "Write1"
 
     OUTPUT_KNOB_NAME = "tank_channel"

@@ -19,13 +19,15 @@ import re
 import nuke
 import nukescripts
 
-import tank
-from tank import TankError
-from tank.platform import constants
+import sgtk
+from sgtk import TankError
+from tank_vendor import six
+
 
 # Special exception raised when the work file cannot be resolved.
 class TkComputePathError(TankError):
     pass
+
 
 class TankWriteNodeHandler(object):
     """
@@ -86,8 +88,10 @@ class TankWriteNodeHandler(object):
         for profile in self._app.get_setting("write_nodes", []):
             name = profile["name"]
             if name in self._profiles:
-                self._app.log_warning("Configuration contains multiple Write Node profiles called '%s'!  Only the "
-                                      "first will be available" % name)
+                self._app.log_warning(
+                    "Configuration contains multiple Write Node profiles called '%s'!  Only the "
+                    "first will be available" % name
+                )
                 continue
 
             self._profile_names.append(name)
@@ -104,9 +108,11 @@ class TankWriteNodeHandler(object):
         Returns a list of tank write nodes
         """
         if nuke.exists("root"):
-            return nuke.allNodes(group=nuke.root(),
-                                 filter=TankWriteNodeHandler.SG_WRITE_NODE_CLASS,
-                                 recurseGroups = True)
+            return nuke.allNodes(
+                group=nuke.root(),
+                filter=TankWriteNodeHandler.SG_WRITE_NODE_CLASS,
+                recurseGroups=True,
+            )
         else:
             return []
 
@@ -153,8 +159,9 @@ class TankWriteNodeHandler(object):
         """
         helper function. Returns the associated pub template obj for a node
         """
-        return (self.__get_publish_template(node, True)
-                or self.__get_publish_template(node, False))
+        return self.__get_publish_template(node, True) or self.__get_publish_template(
+            node, False
+        )
 
     def compute_render_path(self, node):
         """
@@ -223,8 +230,10 @@ class TankWriteNodeHandler(object):
 
         # make sure that the file is a proper tank work path
         if not self._script_template.validate(curr_filename):
-            nuke.message("This file is not a Shotgun work file. Please use Shotgun Save-As in order "
-                         "to save the file as a valid work file.")
+            nuke.message(
+                "This file is not a Shotgun work file. Please use Shotgun Save-As in order "
+                "to save the file as a valid work file."
+            )
             return
 
         # new node please!
@@ -262,11 +271,15 @@ class TankWriteNodeHandler(object):
             self._app.log_debug("Found ShotgunWriteNodePlaceholder node: %s" % n)
             metadata = n.metadata()
             profile_name = metadata.get("name")
-            output_name = metadata.get("output") or metadata.get("channel") # for backwards compatibility
+            output_name = metadata.get("output") or metadata.get(
+                "channel"
+            )  # for backwards compatibility
 
             # Make sure the profile is valid:
             if profile_name not in self._profiles:
-                self._app.log_warning("Unknown write node profile in file, skipping: %s" % profile_name)
+                self._app.log_warning(
+                    "Unknown write node profile in file, skipping: %s" % profile_name
+                )
                 continue
 
             # try and ensure we're connected to the tree after we delete the nodes
@@ -302,7 +315,9 @@ class TankWriteNodeHandler(object):
             return None
         th_node.knob("disable").setValue(False)
 
-        png_path = tempfile.NamedTemporaryFile(suffix=".png", prefix="tanktmp", delete=False).name
+        png_path = tempfile.NamedTemporaryFile(
+            suffix=".png", prefix="tanktmp", delete=False
+        ).name
 
         # set render output - make sure to use a path with slashes on all OSes
         th_node.knob("file").setValue(png_path.replace(os.path.sep, "/"))
@@ -318,12 +333,14 @@ class TankWriteNodeHandler(object):
             render_node_name = "%s.create_thumbnail" % node.name()
             # and do it - always render the first view we find.
             first_view = nuke.views()[0]
-            nuke.execute(render_node_name,
-                         start=frame_to_render,
-                         end=frame_to_render,
-                         incr=1,
-                         views=[first_view])
-        except Exception, e:
+            nuke.execute(
+                render_node_name,
+                start=frame_to_render,
+                end=frame_to_render,
+                incr=1,
+                views=[first_view],
+            )
+        except Exception as e:
             self._app.log_warning("Thumbnail could not be generated: %s" % e)
             # remove the temp file
             try:
@@ -352,7 +369,9 @@ class TankWriteNodeHandler(object):
 
         # user create callback that gets executed whenever a Shotgun Write Node
         # is created by the user
-        nuke.addOnUserCreate(self.__on_user_create, nodeClass=TankWriteNodeHandler.SG_WRITE_NODE_CLASS)
+        nuke.addOnUserCreate(
+            self.__on_user_create, nodeClass=TankWriteNodeHandler.SG_WRITE_NODE_CLASS
+        )
 
         # set up all existing nodes:
         for n in self.get_nodes():
@@ -364,7 +383,9 @@ class TankWriteNodeHandler(object):
         """
         nuke.removeOnScriptLoad(self.process_placeholder_nodes, nodeClass="Root")
         nuke.removeOnScriptSave(self.__on_script_save)
-        nuke.removeOnUserCreate(self.__on_user_create, nodeClass=TankWriteNodeHandler.SG_WRITE_NODE_CLASS)
+        nuke.removeOnUserCreate(
+            self.__on_user_create, nodeClass=TankWriteNodeHandler.SG_WRITE_NODE_CLASS
+        )
 
     def convert_sg_to_nuke_write_nodes(self):
         """
@@ -409,10 +430,18 @@ class TankWriteNodeHandler(object):
             new_wn["file_type"].setValue(int_wn["file_type"].value())
 
             # copy across any knob values from the internal write node.
-            for knob_name, knob in int_wn.knobs().iteritems():
+            for knob_name, knob in int_wn.knobs().items():
                 # skip knobs we don't want to copy:
-                if knob_name in ["file_type", "file", "proxy", "beforeRender", "afterRender",
-                              "name", "xpos", "ypos"]:
+                if knob_name in [
+                    "file_type",
+                    "file",
+                    "proxy",
+                    "beforeRender",
+                    "afterRender",
+                    "name",
+                    "xpos",
+                    "ypos",
+                ]:
                     continue
 
                 if knob_name in new_wn.knobs():
@@ -445,7 +474,9 @@ class TankWriteNodeHandler(object):
 
             # use node name for output
             knob = nuke.Boolean_Knob(TankWriteNodeHandler.USE_NAME_AS_OUTPUT_KNOB_NAME)
-            knob.setValue(sg_wn[TankWriteNodeHandler.USE_NAME_AS_OUTPUT_KNOB_NAME].value())
+            knob.setValue(
+                sg_wn[TankWriteNodeHandler.USE_NAME_AS_OUTPUT_KNOB_NAME].value()
+            )
             new_wn.addKnob(knob)
 
             # templates
@@ -491,25 +522,31 @@ class TankWriteNodeHandler(object):
         nukescripts.clear_selection_recursive()
 
         # get write nodes:
-        write_nodes = nuke.allNodes(group=nuke.root(), filter="Write", recurseGroups = True)
+        write_nodes = nuke.allNodes(
+            group=nuke.root(), filter="Write", recurseGroups=True
+        )
         for wn in write_nodes:
 
             # look for additional toolkit knobs:
             profile_knob = wn.knob("tk_profile_name")
             output_knob = wn.knob("tk_output")
-            use_name_as_output_knob = wn.knob(TankWriteNodeHandler.USE_NAME_AS_OUTPUT_KNOB_NAME)
+            use_name_as_output_knob = wn.knob(
+                TankWriteNodeHandler.USE_NAME_AS_OUTPUT_KNOB_NAME
+            )
             render_template_knob = wn.knob("tk_render_template")
             publish_template_knob = wn.knob("tk_publish_template")
             proxy_render_template_knob = wn.knob("tk_proxy_render_template")
             proxy_publish_template_knob = wn.knob("tk_proxy_publish_template")
 
-            if (not profile_knob
+            if (
+                not profile_knob
                 or not output_knob
                 or not use_name_as_output_knob
                 or not render_template_knob
                 or not publish_template_knob
                 or not proxy_render_template_knob
-                or not proxy_publish_template_knob):
+                or not proxy_publish_template_knob
+            ):
                 # can't convert to a Shotgun Write Node as we have missing parameters!
                 continue
 
@@ -527,8 +564,12 @@ class TankWriteNodeHandler(object):
             new_sg_wn["tk_cached_proxy_path"].setValue(wn["proxy"].value())
             new_sg_wn["render_template"].setValue(render_template_knob.value())
             new_sg_wn["publish_template"].setValue(publish_template_knob.value())
-            new_sg_wn["proxy_render_template"].setValue(proxy_render_template_knob.value())
-            new_sg_wn["proxy_publish_template"].setValue(proxy_publish_template_knob.value())
+            new_sg_wn["proxy_render_template"].setValue(
+                proxy_render_template_knob.value()
+            )
+            new_sg_wn["proxy_publish_template"].setValue(
+                proxy_publish_template_knob.value()
+            )
 
             # set the profile & output - this will cause the paths to be reset:
             # Note, we don't call the method __set_profile() as we don't want to
@@ -538,19 +579,34 @@ class TankWriteNodeHandler(object):
             profile_name = profile_knob.value()
             new_sg_wn["profile_name"].setValue(profile_name)
             new_sg_wn["tk_profile_list"].setValue(profile_name)
-            new_sg_wn[TankWriteNodeHandler.OUTPUT_KNOB_NAME].setValue(output_knob.value())
-            new_sg_wn[TankWriteNodeHandler.USE_NAME_AS_OUTPUT_KNOB_NAME].setValue(use_name_as_output_knob.value())
+            new_sg_wn[TankWriteNodeHandler.OUTPUT_KNOB_NAME].setValue(
+                output_knob.value()
+            )
+            new_sg_wn[TankWriteNodeHandler.USE_NAME_AS_OUTPUT_KNOB_NAME].setValue(
+                use_name_as_output_knob.value()
+            )
 
             # make sure file_type is set properly:
             int_wn = new_sg_wn.node(TankWriteNodeHandler.WRITE_NODE_NAME)
             int_wn["file_type"].setValue(wn["file_type"].value())
 
             # copy across and knob values from the internal write node.
-            for knob_name, knob in wn.knobs().iteritems():
+            for knob_name, knob in wn.knobs().items():
                 # skip knobs we don't want to copy:
-                if knob_name in ["file_type", "file", "proxy", "beforeRender", "afterRender",
-                              "name", "xpos", "ypos", "disable", "tile_color", "postage_stamp",
-                              "label"]:
+                if knob_name in [
+                    "file_type",
+                    "file",
+                    "proxy",
+                    "beforeRender",
+                    "afterRender",
+                    "name",
+                    "xpos",
+                    "ypos",
+                    "disable",
+                    "tile_color",
+                    "postage_stamp",
+                    "label",
+                ]:
                     continue
 
                 if knob_name in int_wn.knobs():
@@ -571,7 +627,6 @@ class TankWriteNodeHandler(object):
             new_sg_wn.setName(node_name)
             new_sg_wn.setXpos(node_pos[0])
             new_sg_wn.setYpos(node_pos[1])
-
 
     ################################################################################################
     # Public methods called from gizmo - although these are public, they should
@@ -666,28 +721,29 @@ class TankWriteNodeHandler(object):
             try:
                 files = self.get_files_on_disk(node)
                 if len(files) == 0:
-                    nuke.message("There are no %srenders for this node yet!\n"
-                             "When you render, the files will be written to "
-                             "the following location:\n\n%s"
-                             % (("proxy " if is_proxy else ""), render_path))
+                    nuke.message(
+                        "There are no %srenders for this node yet!\n"
+                        "When you render, the files will be written to "
+                        "the following location:\n\n%s"
+                        % (("proxy " if is_proxy else ""), render_path)
+                    )
                 else:
                     render_dir = os.path.dirname(files[0])
-            except Exception, e:
+            except Exception as e:
                 nuke.message("Unable to jump to file system:\n\n%s" % e)
 
         # if we have a valid render path then show it:
         if render_dir:
-            system = sys.platform
 
             # run the app
-            if system == "linux2":
-                cmd = "xdg-open \"%s\"" % render_dir
-            elif system == "darwin":
+            if sgtk.util.is_linux():
+                cmd = 'xdg-open "%s"' % render_dir
+            elif sgtk.util.is_macos():
                 cmd = "open '%s'" % render_dir
-            elif system == "win32":
-                cmd = "cmd.exe /C start \"Folder\" \"%s\"" % render_dir
+            elif sgtk.util.is_windows():
+                cmd = 'cmd.exe /C start "Folder" "%s"' % render_dir
             else:
-                raise Exception("Platform '%s' is not supported." % system)
+                raise Exception("Platform '%s' is not supported." % sys.platform)
 
             self._app.log_debug("Executing command '%s'" % cmd)
             exit_code = os.system(cmd)
@@ -717,6 +773,7 @@ class TankWriteNodeHandler(object):
 
         # use Qt to copy the path to the clipboard:
         from sgtk.platform.qt import QtGui
+
         QtGui.QApplication.clipboard().setText(render_path)
 
     def on_before_render_gizmo_callback(self):
@@ -766,9 +823,11 @@ class TankWriteNodeHandler(object):
             try:
                 exec(cmd)
             except Exception:
-                self._app.log_error("The Write node's beforeRender setting failed "
-                                    "to execute!")
+                self._app.log_error(
+                    "The Write node's beforeRender setting failed " "to execute!"
+                )
                 raise
+
     def on_after_render_gizmo_callback(self):
         """
         Callback from nuke whenever a tank write node has finished being rendered
@@ -791,8 +850,9 @@ class TankWriteNodeHandler(object):
             try:
                 exec(cmd)
             except Exception:
-                self._app.log_error("The Write node's afterRender setting failed "
-                                    "to execute!")
+                self._app.log_error(
+                    "The Write node's afterRender setting failed " "to execute!"
+                )
                 raise
 
     ################################################################################################
@@ -883,7 +943,9 @@ class TankWriteNodeHandler(object):
         in the render template or not
         """
         output_knob = node.knob(TankWriteNodeHandler.OUTPUT_KNOB_NAME)
-        name_as_output_knob = node.knob(TankWriteNodeHandler.USE_NAME_AS_OUTPUT_KNOB_NAME)
+        name_as_output_knob = node.knob(
+            TankWriteNodeHandler.USE_NAME_AS_OUTPUT_KNOB_NAME
+        )
 
         output_is_used = self.__is_output_used(node)
         name_as_output = name_as_output_knob.value()
@@ -933,10 +995,10 @@ class TankWriteNodeHandler(object):
             if context_path:
                 # found a context path!
                 # chop off this bit from the normalized path
-                local_path = render_dir[len(context_path):]
+                local_path = render_dir[len(context_path) :]
                 # drop start slash
                 if local_path.startswith(os.sep):
-                    local_path = local_path[len(os.sep):]
+                    local_path = local_path[len(os.sep) :]
                 # e.g. for path   /mnt/proj/shotXYZ/renders/v003/hello.%04d.exr
                 # context_path:   /mnt/proj/shotXYZ
                 # local_path:     renders/v003
@@ -948,9 +1010,11 @@ class TankWriteNodeHandler(object):
                 # context_path:   /mnt/proj/shotXYZ/renders/v003
                 # local_path:
 
-            self.__path_preview_cache[cache_key] = {"context_path":context_path,
-                                                    "local_path":local_path,
-                                                    "file_name":file_name}
+            self.__path_preview_cache[cache_key] = {
+                "context_path": context_path,
+                "local_path": local_path,
+                "file_name": file_name,
+            }
 
         # update the preview knobs - note, not sure why but
         # under certain circumstances the property editor doesn't
@@ -966,7 +1030,6 @@ class TankWriteNodeHandler(object):
         set_path_knob("path_context", context_path)
         set_path_knob("path_local", local_path)
         set_path_knob("path_filename", file_name)
-
 
     def __apply_cached_file_format_settings(self, node):
         """
@@ -984,14 +1047,16 @@ class TankWriteNodeHandler(object):
         file_settings = {}
         try:
             # file_settings_str is a pickled dictionary so convert it back to a dictionary:
-            file_settings = pickle.loads(file_settings_str) or {}
-        except Exception, e:
-            self._app.log_warning("Failed to extract cached file settings from node '%s' - %s"
-                              % node.name(), e)
+            file_settings = sgtk.util.pickle.loads(file_settings_str) or {}
+        except Exception as e:
+            self._app.log_warning(
+                "Failed to extract cached file settings from node '%s' - %s"
+                % node.name(),
+                e,
+            )
 
         # update the node:
         self.__populate_format_settings(node, file_type, file_settings)
-
 
     def __set_profile(self, node, profile_name, reset_all_settings=False):
         """
@@ -1014,13 +1079,18 @@ class TankWriteNodeHandler(object):
         profile = self._profiles.get(profile_name)
         if not profile:
             # this shouldn't really every happen!
-            self._app.log_warning("Failed to find a write node profile called '%s' for node '%s'!"
-                                  % profile_name, node.name())
+            self._app.log_warning(
+                "Failed to find a write node profile called '%s' for node '%s'!"
+                % profile_name,
+                node.name(),
+            )
             # at the very least, try to restore the file format settings from the cached values:
             self.__apply_cached_file_format_settings(node)
             return
 
-        self._app.log_debug("Changing the profile for node '%s' to: %s" % (node.name(), profile_name))
+        self._app.log_debug(
+            "Changing the profile for node '%s' to: %s" % (node.name(), profile_name)
+        )
 
         # keep track of the old profile name:
         old_profile_name = node.knob("profile_name").value()
@@ -1028,8 +1098,12 @@ class TankWriteNodeHandler(object):
         # pull settings from profile:
         render_template = self._app.get_template_by_name(profile["render_template"])
         publish_template = self._app.get_template_by_name(profile["publish_template"])
-        proxy_render_template = self._app.get_template_by_name(profile["proxy_render_template"])
-        proxy_publish_template = self._app.get_template_by_name(profile["proxy_publish_template"])
+        proxy_render_template = self._app.get_template_by_name(
+            profile["proxy_render_template"]
+        )
+        proxy_publish_template = self._app.get_template_by_name(
+            profile["proxy_publish_template"]
+        )
         file_type = profile["file_type"]
         file_settings = profile["settings"]
         tile_color = profile["tile_color"]
@@ -1046,17 +1120,15 @@ class TankWriteNodeHandler(object):
 
         # set the format
         self.__populate_format_settings(
-            node,
-            file_type,
-            file_settings,
-            reset_all_settings,
-            promote_write_knobs,
+            node, file_type, file_settings, reset_all_settings, promote_write_knobs,
         )
 
         # cache the type and settings on the root node so that
         # they get serialized with the script:
         self.__update_knob_value(node, "tk_file_type", file_type)
-        self.__update_knob_value(node, "tk_file_type_settings", pickle.dumps(file_settings))
+        self.__update_knob_value(
+            node, "tk_file_type_settings", sgtk.util.pickle.dumps(file_settings)
+        )
 
         # Hide the promoted knobs that might exist from the previously
         # active profile.
@@ -1071,7 +1143,9 @@ class TankWriteNodeHandler(object):
         for i, knob_name in enumerate(promote_write_knobs):
             target_knob = write_node.knob(knob_name)
             if not target_knob:
-                self._app.log_warning("Knob %s does not exist and will not be promoted." % knob_name)
+                self._app.log_warning(
+                    "Knob %s does not exist and will not be promoted." % knob_name
+                )
                 continue
 
             link_name = "_promoted_" + str(i)
@@ -1105,17 +1179,28 @@ class TankWriteNodeHandler(object):
         # write the template name to the node so that we know it later
         self.__update_knob_value(node, "render_template", render_template.name)
         self.__update_knob_value(node, "publish_template", publish_template.name)
-        self.__update_knob_value(node, "proxy_render_template",
-                                 proxy_render_template.name if proxy_render_template else "")
-        self.__update_knob_value(node, "proxy_publish_template",
-                                 proxy_publish_template.name if proxy_publish_template else "")
+        self.__update_knob_value(
+            node,
+            "proxy_render_template",
+            proxy_render_template.name if proxy_render_template else "",
+        )
+        self.__update_knob_value(
+            node,
+            "proxy_publish_template",
+            proxy_publish_template.name if proxy_publish_template else "",
+        )
 
         # If a node's tile_color was defined in the profile then set it:
         if not tile_color or len(tile_color) != 3:
             if tile_color:
                 # don't have exactly three values for RGB so log a warning:
-                self._app.log_warning(("The tile_color setting for profile '%s' must contain 3 values (RGB) - this "
-                                    "setting will be ignored!") % profile_name)
+                self._app.log_warning(
+                    (
+                        "The tile_color setting for profile '%s' must contain 3 values (RGB) - this "
+                        "setting will be ignored!"
+                    )
+                    % profile_name
+                )
 
             # reset tile_color knob value back to default:
             default_value = int(node["tile_color"].defaultValue())
@@ -1171,7 +1256,9 @@ class TankWriteNodeHandler(object):
         node_profile = self.get_node_profile_name(node)
         for n in self.get_nodes():
             if n != node and self.get_node_profile_name(n) == node_profile:
-                used_output_names.add(n.knob(TankWriteNodeHandler.OUTPUT_KNOB_NAME).value())
+                used_output_names.add(
+                    n.knob(TankWriteNodeHandler.OUTPUT_KNOB_NAME).value()
+                )
 
         # handle if output is optional:
         if output_is_optional and "" not in used_output_names:
@@ -1189,7 +1276,12 @@ class TankWriteNodeHandler(object):
         node.knob(TankWriteNodeHandler.OUTPUT_KNOB_NAME).setValue(output_name)
 
     def __populate_format_settings(
-        self, node, file_type, file_settings, reset_all_settings=False, promoted_write_knobs=None
+        self,
+        node,
+        file_type,
+        file_settings,
+        reset_all_settings=False,
+        promoted_write_knobs=None,
     ):
         """
         Controls the file format of the write node
@@ -1214,8 +1306,10 @@ class TankWriteNodeHandler(object):
 
         # and read it back to check that the value is what we expect
         if write_node.knob("file_type").value() != file_type:
-            self._app.log_error("Shotgun write node configuration refers to an invalid file "
-                                "format '%s'! Reverting to auto-detect mode instead." % file_type)
+            self._app.log_error(
+                "Shotgun write node configuration refers to an invalid file "
+                "format '%s'! Reverting to auto-detect mode instead." % file_type
+            )
             write_node.knob("file_type").setValue("  ")
             return
 
@@ -1234,21 +1328,25 @@ class TankWriteNodeHandler(object):
             knobs_to_skip.extend(promoted_write_knobs)
 
         # now apply file format settings
-        for setting_name, setting_value in file_settings.iteritems():
+        for setting_name, setting_value in file_settings.items():
             if setting_name in knobs_to_skip:
                 # skip this setting:
                 continue
 
             knob = write_node.knob(setting_name)
             if knob is None:
-                self._app.log_error("%s is not a valid setting for file format %s. It will be ignored."
-                                    % (setting_name, file_type))
+                self._app.log_error(
+                    "%s is not a valid setting for file format %s. It will be ignored."
+                    % (setting_name, file_type)
+                )
                 continue
 
             knob.setValue(setting_value)
             if knob.value() != setting_value:
-                self._app.log_error("Could not set %s file format setting %s to '%s'. Instead the value was set to '%s'"
-                                    % (file_type, setting_name, setting_value, knob.value()))
+                self._app.log_error(
+                    "Could not set %s file format setting %s to '%s'. Instead the value was set to '%s'"
+                    % (file_type, setting_name, setting_value, knob.value())
+                )
 
         # If we're not resetting everything, then we need to try and
         # make sure that the settings that the user made to the internal
@@ -1265,7 +1363,8 @@ class TankWriteNodeHandler(object):
             tcl_settings = node.knob("tk_write_node_settings").value()
 
             if tcl_settings:
-                knob_settings = pickle.loads(str(base64.b64decode(tcl_settings)))
+                decoded_settings = base64.b64decode(tcl_settings)
+                knob_settings = pickle.loads(six.ensure_binary(decoded_settings))
                 # We're going to filter out everything that isn't one of our
                 # promoted write node knobs. This will allow us to make sure
                 # that those knobs are set to the correct value, regardless
@@ -1294,7 +1393,8 @@ class TankWriteNodeHandler(object):
                             filtered_settings.append(setting)
 
                 self._app.log_debug(
-                    "Promoted write node knob settings to be applied: %s" % filtered_settings
+                    "Promoted write node knob settings to be applied: %s"
+                    % filtered_settings
                 )
                 write_node.readKnobs("\n".join(filtered_settings))
                 self.reset_render_path(node)
@@ -1303,10 +1403,14 @@ class TankWriteNodeHandler(object):
         """
         Set the output on the specified node from user interaction.
         """
-        self._app.log_debug("Changing the output for node '%s' to: %s" % (node.name(), output_name))
+        self._app.log_debug(
+            "Changing the output for node '%s' to: %s" % (node.name(), output_name)
+        )
 
         # update output knob:
-        self.__update_knob_value(node, TankWriteNodeHandler.OUTPUT_KNOB_NAME, output_name)
+        self.__update_knob_value(
+            node, TankWriteNodeHandler.OUTPUT_KNOB_NAME, output_name
+        )
 
         # reset the render path:
         self.reset_render_path(node)
@@ -1348,8 +1452,11 @@ class TankWriteNodeHandler(object):
         """
         try:
             # get the cached path without evaluating:
-            cached_path = (node.knob("tk_cached_proxy_path").toScript() if is_proxy
-                                    else node.knob("cached_path").toScript())
+            cached_path = (
+                node.knob("tk_cached_proxy_path").toScript()
+                if is_proxy
+                else node.knob("cached_path").toScript()
+            )
 
             if node in self.__currently_rendering_nodes:
                 # when rendering we don't want to re-evaluate the paths as doing
@@ -1382,76 +1489,127 @@ class TankWriteNodeHandler(object):
             cache_entry = None
             try:
                 # gather the render settings to use when computing the path:
-                render_template, width, height, output_name = self.__gather_render_settings(node, is_proxy)
+                (
+                    render_template,
+                    width,
+                    height,
+                    output_name,
+                ) = self.__gather_render_settings(node, is_proxy)
 
                 # experimental settings cache to avoid re-computing the path if nothing has changed...
-                cache_item = self.__node_computed_path_settings_cache.get((node, is_proxy), (None, "", ""))
+                cache_item = self.__node_computed_path_settings_cache.get(
+                    (node, is_proxy), (None, "", "")
+                )
                 old_cache_entry, compute_path_error, render_path = cache_item
                 cache_entry = {
-                    "ctx":self._app.context,
-                    "width":width,
-                    "height":height,
-                    "output":output_name,
-                    "script_path":script_path
+                    "ctx": self._app.context,
+                    "width": width,
+                    "height": height,
+                    "output": output_name,
+                    "script_path": script_path,
                 }
 
-                if (not force_reset) and old_cache_entry and cache_entry == old_cache_entry:
+                if (
+                    (not force_reset)
+                    and old_cache_entry
+                    and cache_entry == old_cache_entry
+                ):
                     # nothing of relevance has changed since the last time the path was changed!
                     # if there was previously an error then raise it so that it gets reported properly:
                     if compute_path_error:
                         raise TkComputePathError(compute_path_error)
                 else:
                     # compute the render path:
-                    render_path = self.__compute_render_path_from(node, render_template, width, height, output_name)
+                    render_path = self.__compute_render_path_from(
+                        node, render_template, width, height, output_name
+                    )
 
             except TkComputePathError as e:
                 # update cache:
-                self.__node_computed_path_settings_cache[(node, is_proxy)] = (cache_entry, str(e), "")
+                self.__node_computed_path_settings_cache[(node, is_proxy)] = (
+                    cache_entry,
+                    str(e),
+                    "",
+                )
 
                 # render path could not be computed for some reason - display warning
                 # to the user in the property editor:
-                path_warning += "<br>".join(self.__wrap_text(
-                        "The render path is currently frozen because Toolkit could not "
-                        "determine a valid path!  This was due to the following problem:", 60)) + "<br>"
+                path_warning += (
+                    "<br>".join(
+                        self.__wrap_text(
+                            "The render path is currently frozen because Toolkit could not "
+                            "determine a valid path!  This was due to the following problem:",
+                            60,
+                        )
+                    )
+                    + "<br>"
+                )
                 path_warning += "<br>"
-                path_warning += ("&nbsp;&nbsp;&nbsp;"
-                                + " <br>&nbsp;&nbsp;&nbsp;".join(self.__wrap_text(str(e), 57))
-                                + " <br>")
+                path_warning += (
+                    "&nbsp;&nbsp;&nbsp;"
+                    + " <br>&nbsp;&nbsp;&nbsp;".join(self.__wrap_text(str(e), 57))
+                    + " <br>"
+                )
 
                 if cached_path:
                     # have a previously cached path so we can at least still render:
                     path_warning += "<br>"
-                    path_warning += "<br>".join(self.__wrap_text(
-                        "You can still render to the frozen path but you won't be able to "
-                        "publish this node!", 60))
+                    path_warning += "<br>".join(
+                        self.__wrap_text(
+                            "You can still render to the frozen path but you won't be able to "
+                            "publish this node!",
+                            60,
+                        )
+                    )
 
                 render_path = cached_path
             else:
                 # update cache:
-                self.__node_computed_path_settings_cache[(node, is_proxy)] = (cache_entry, "", render_path)
+                self.__node_computed_path_settings_cache[(node, is_proxy)] = (
+                    cache_entry,
+                    "",
+                    render_path,
+                )
 
                 path_is_locked = False
                 if not force_reset:
                     # if we force-reset the path then it will never be locked, otherwise we need to test
                     # to see if it is locked.  A path is considered locked if the render path differs
                     # from the cached path ignoring certain dynamic fields (e.g. width, height).
-                    path_is_locked = self.__is_render_path_locked(node, render_path, cached_path, is_proxy)
+                    path_is_locked = self.__is_render_path_locked(
+                        node, render_path, cached_path, is_proxy
+                    )
 
                 if path_is_locked:
                     # render path was not what we expected!
-                    path_warning += "<br>".join(self.__wrap_text(
-                        "The path does not match the current Shotgun Work Area.  You can "
-                        "still render but you will not be able to publish this node.", 60)) + "<br>"
+                    path_warning += (
+                        "<br>".join(
+                            self.__wrap_text(
+                                "The path does not match the current Shotgun Work Area.  You can "
+                                "still render but you will not be able to publish this node.",
+                                60,
+                            )
+                        )
+                        + "<br>"
+                    )
                     path_warning += "<br>"
-                    path_warning += "<br>".join(self.__wrap_text(
-                        "The path will be automatically reset next time you version-up, publish "
-                        "or click 'Reset Path'.", 60))
+                    path_warning += "<br>".join(
+                        self.__wrap_text(
+                            "The path will be automatically reset next time you version-up, publish "
+                            "or click 'Reset Path'.",
+                            60,
+                        )
+                    )
 
                     reset_path_button_visible = True
                     render_path = cached_path
 
                 if not path_is_locked or not cached_path:
-                    self.__update_knob_value(node, "tk_cached_proxy_path" if is_proxy else "cached_path", render_path)
+                    self.__update_knob_value(
+                        node,
+                        "tk_cached_proxy_path" if is_proxy else "cached_path",
+                        render_path,
+                    )
 
                 # Also update the 'last known script' to be the current script
                 # this mechanism is used to determine if the script is being saved
@@ -1467,7 +1625,10 @@ class TankWriteNodeHandler(object):
 
                 # update warning displayed to the user:
                 if path_warning:
-                    path_warning = "<i style='color:orange'><b><br>Warning</b><br>%s</i><br>" % path_warning
+                    path_warning = (
+                        "<i style='color:orange'><b><br>Warning</b><br>%s</i><br>"
+                        % path_warning
+                    )
                     self.__update_knob_value(node, "path_warning", path_warning)
                     node.knob("path_warning").setVisible(True)
                 else:
@@ -1484,13 +1645,18 @@ class TankWriteNodeHandler(object):
                 if is_proxy:
                     full_render_path = self.__get_render_path(node, False)
                     if full_render_path == render_path:
-                        render_warning = ("The full & proxy resolution render paths are currently the same.  "
-                                          "Rendering in proxy mode will overwrite any previously rendered "
-                                          "full-res frames!")
+                        render_warning = (
+                            "The full & proxy resolution render paths are currently the same.  "
+                            "Rendering in proxy mode will overwrite any previously rendered "
+                            "full-res frames!"
+                        )
                 if render_warning:
-                    self.__update_knob_value(node, "tk_render_warning",
-                                             "<i style='color:orange'><b>Warning</b> <br>%s<i><br>"
-                                             % "<br>".join(self.__wrap_text(render_warning, 60)))
+                    self.__update_knob_value(
+                        node,
+                        "tk_render_warning",
+                        "<i style='color:orange'><b>Warning</b> <br>%s<i><br>"
+                        % "<br>".join(self.__wrap_text(render_warning, 60)),
+                    )
                     node.knob("tk_render_warning").setVisible(True)
                 else:
                     self.__update_knob_value(node, "tk_render_warning", "")
@@ -1529,8 +1695,8 @@ class TankWriteNodeHandler(object):
             try:
                 path = self.__compute_render_path(node, is_proxy)
             except TkComputePathError:
-                    # ignore
-                    pass
+                # ignore
+                pass
 
         return path
 
@@ -1543,13 +1709,15 @@ class TankWriteNodeHandler(object):
         template = self.__get_render_template(node, is_proxy, fallback_to_render=True)
 
         if not template.validate(file_name):
-            raise Exception("Could not resolve the files on disk for node %s."
-                            "The path '%s' is not recognized by Shotgun!" % (node.name(), file_name))
+            raise Exception(
+                "Could not resolve the files on disk for node %s."
+                "The path '%s' is not recognized by Shotgun!" % (node.name(), file_name)
+            )
 
         fields = template.get_fields(file_name)
 
         # make sure we don't look for any eye - %V or SEQ - %04d stuff
-        frames = self._app.tank.paths_from_template(template, fields, ["SEQ", "eye"])
+        frames = self._app.sgtk.paths_from_template(template, fields, ["SEQ", "eye"])
 
         return frames
 
@@ -1584,27 +1752,26 @@ class TankWriteNodeHandler(object):
 
             # proxy format
             proxy_format = root.knob("proxy_format").value()
-            proxy_w  = proxy_format.width()
-            proxy_h  = proxy_format.height()
+            proxy_w = proxy_format.width()
+            proxy_h = proxy_format.height()
             proxy_aspect = proxy_format.pixelAspect()
 
             # calculate scales and offsets required:
-            scale_x = float(proxy_w)/float(root_w)
-            scale_y = scale_x * (proxy_aspect/root_aspect)
+            scale_x = float(proxy_w) / float(root_w)
+            scale_y = scale_x * (proxy_aspect / root_aspect)
 
-            offset_x = 0.0 # this always seems to be 0.0...
-            offset_y = (((proxy_h/scale_y) - root_h) * scale_y)/2.0
+            offset_x = 0.0  # this always seems to be 0.0...
+            offset_y = (((proxy_h / scale_y) - root_h) * scale_y) / 2.0
         else:
             # unexpected type!
             pass
 
         # calculate the scaled format for the node:
-        scaled_format = node.format().scaled(scale_x,scale_y,offset_x,offset_y)
+        scaled_format = node.format().scaled(scale_x, scale_y, offset_x, offset_y)
 
-        #print ("sx:", scale_x, "sy:", scale_y, "tx:", offset_x, "ty:", offset_y,
+        # print ("sx:", scale_x, "sy:", scale_y, "tx:", offset_x, "ty:", offset_y,
         #        "w:", scaled_format.width(), "h:", scaled_format.height())
         return (scaled_format.width(), scaled_format.height())
-
 
     def __gather_render_settings(self, node, is_proxy=False):
         """
@@ -1642,7 +1809,6 @@ class TankWriteNodeHandler(object):
 
         return (render_template, width, height, output_name)
 
-
     def __compute_render_path(self, node, is_proxy=False):
         """
         Computes the render path for a node.
@@ -1653,12 +1819,18 @@ class TankWriteNodeHandler(object):
         """
 
         # gather the render settings to use:
-        render_template, width, height, output_name = self.__gather_render_settings(node, is_proxy)
+        render_template, width, height, output_name = self.__gather_render_settings(
+            node, is_proxy
+        )
 
         # compute the render path:
-        return self.__compute_render_path_from(node, render_template, width, height, output_name)
+        return self.__compute_render_path_from(
+            node, render_template, width, height, output_name
+        )
 
-    def __compute_render_path_from(self, node, render_template, width, height, output_name):
+    def __compute_render_path_from(
+        self, node, render_template, width, height, output_name
+    ):
         """
         Computes the render path for a node using the specified settings
 
@@ -1682,7 +1854,11 @@ class TankWriteNodeHandler(object):
 
         # extract the work fields from the script path using the work_file template:
         fields = {}
-        if curr_filename and self._script_template and self._script_template.validate(curr_filename):
+        if (
+            curr_filename
+            and self._script_template
+            and self._script_template.validate(curr_filename)
+        ):
             fields = self._script_template.get_fields(curr_filename)
         if not fields:
             raise TkComputePathError("The current script is not a Shotgun Work File!")
@@ -1706,16 +1882,21 @@ class TankWriteNodeHandler(object):
         # validate the output name - be backwards compatible with 'channel' as well
         for key_name in ["output", "channel"]:
             if key_name in fields:
-                del(fields[key_name])
+                del fields[key_name]
 
             if key_name in render_template.keys:
                 if not output_name:
                     if not render_template.is_optional(key_name):
-                        raise TkComputePathError("A valid output name is required by this profile for the '%s' field!"
-                                                 % key_name)
+                        raise TkComputePathError(
+                            "A valid output name is required by this profile for the '%s' field!"
+                            % key_name
+                        )
                 else:
                     if not render_template.keys[key_name].validate(output_name):
-                        raise TkComputePathError("The output name '%s' contains illegal characters!" % output_name)
+                        raise TkComputePathError(
+                            "The output name '%s' contains illegal characters!"
+                            % output_name
+                        )
                     fields[key_name] = output_name
 
         # update with additional fields from the context:
@@ -1725,7 +1906,7 @@ class TankWriteNodeHandler(object):
         path = ""
         try:
             path = render_template.apply_fields(fields)
-        except TankError, e:
+        except TankError as e:
             raise TkComputePathError(str(e))
 
         # make slahes uniform:
@@ -1743,7 +1924,9 @@ class TankWriteNodeHandler(object):
         would be different to the cached path ignoring the width & height fields.
         """
         # get the render template:
-        render_template = self.__get_render_template(node, is_proxy, fallback_to_render=True)
+        render_template = self.__get_render_template(
+            node, is_proxy, fallback_to_render=True
+        )
         if not render_template:
             return True
 
@@ -1765,9 +1948,9 @@ class TankWriteNodeHandler(object):
                 # get the new fields from the render path and compare:
                 new_fields = render_template.get_fields(render_path)
 
-                path_is_locked = (len(new_fields) != len(prev_fields))
+                path_is_locked = len(new_fields) != len(prev_fields)
                 if not path_is_locked:
-                    for name, value in new_fields.iteritems():
+                    for name, value in new_fields.items():
                         if name not in prev_fields:
                             path_is_locked = True
                             break
@@ -1835,7 +2018,9 @@ class TankWriteNodeHandler(object):
         # ensure that the correct entry is selected from the list:
         self.__update_knob_value(node, "tk_profile_list", current_profile_name)
         # and make sure the node is up-to-date with the profile:
-        self.__set_profile(node, current_profile_name, reset_all_settings=reset_all_profile_settings)
+        self.__set_profile(
+            node, current_profile_name, reset_all_settings=reset_all_profile_settings
+        )
 
         # ensure that the disable value properly propogates to the internal write node:
         write_node = node.node(TankWriteNodeHandler.WRITE_NODE_NAME)
@@ -1900,7 +2085,7 @@ class TankWriteNodeHandler(object):
             # values.  We want to ignore these implicit changes so we make use of a knob to
             # keep track of the node creation.  If the node isn't fully created we ignore
             # all knob changes
-            #print "Ignoring change to %s.%s value = %s" % (node.name(), knob.name(), knob.value())
+            # print "Ignoring change to %s.%s value = %s" % (node.name(), knob.name(), knob.value())
             return
 
         if knob.name() == "tk_profile_list":
@@ -1925,7 +2110,9 @@ class TankWriteNodeHandler(object):
         elif knob.name() == TankWriteNodeHandler.USE_NAME_AS_OUTPUT_KNOB_NAME:
             # checkbox controlling if the name should be used as the output has been toggled
             name_as_output = knob.value()
-            node.knob(TankWriteNodeHandler.OUTPUT_KNOB_NAME).setEnabled(not name_as_output)
+            node.knob(TankWriteNodeHandler.OUTPUT_KNOB_NAME).setEnabled(
+                not name_as_output
+            )
             if name_as_output:
                 # update output to reflect the node name:
                 self.__set_output(node, node.knob("name").value())
@@ -1947,8 +2134,10 @@ class TankWriteNodeHandler(object):
                     return
 
                 # propogate the value:
-                self._app.log_debug("Propogating value for '%s.%s' to '%s.%s.%s'"
-                                    % (grp.name(), knob_name, grp.name(), write_node.name(), knob_name))
+                self._app.log_debug(
+                    "Propogating value for '%s.%s' to '%s.%s.%s'"
+                    % (grp.name(), knob_name, grp.name(), write_node.name(), knob_name)
+                )
 
                 write_node.knob(knob_name).setValue(nuke.thisKnob().value())
 
@@ -1984,7 +2173,6 @@ class TankWriteNodeHandler(object):
             script_path = script_path.replace("/", os.path.sep)
 
         return script_path
-
 
     def __on_script_save(self):
         """
@@ -2029,11 +2217,11 @@ class TankWriteNodeHandler(object):
             nk_data = write_node.writeKnobs(
                 nuke.WRITE_NON_DEFAULT_ONLY | nuke.TO_SCRIPT | nuke.TO_VALUE
             )
-            knob_changes = pickle.dumps(nk_data)
+            knob_changes = pickle.dumps(nk_data, protocol=0)
             self.__update_knob_value(
                 n,
                 "tk_write_node_settings",
-                unicode(base64.b64encode(knob_changes)),
+                six.ensure_text(base64.b64encode(knob_changes)),
             )
 
     def __on_user_create(self):

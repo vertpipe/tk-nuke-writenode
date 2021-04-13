@@ -436,8 +436,6 @@ class TankWriteNodeHandler(object):
                     "file_type",
                     "file",
                     "proxy",
-                    "beforeRender",
-                    "afterRender",
                     "name",
                     "xpos",
                     "ypos",
@@ -597,8 +595,6 @@ class TankWriteNodeHandler(object):
                     "file_type",
                     "file",
                     "proxy",
-                    "beforeRender",
-                    "afterRender",
                     "name",
                     "xpos",
                     "ypos",
@@ -776,84 +772,6 @@ class TankWriteNodeHandler(object):
 
         QtGui.QApplication.clipboard().setText(render_path)
 
-    def on_before_render_gizmo_callback(self):
-        """
-        Callback from nuke whenever a tank write node is about to be rendered.
-        """
-        # the current node is the internal 'Write1' Write node:
-        node = nuke.thisNode()
-        if not node:
-            return
-
-        views = node.knob("views").value().split()
-
-        if len(views) < 2:
-            # check if proxy render or not
-            if nuke.root()["proxy"].value():
-                # proxy mode
-                out_file = node.knob("proxy").evaluate()
-            else:
-                out_file = node.knob("file").evaluate()
-
-            out_dir = os.path.dirname(out_file)
-            self._app.ensure_folder_exists(out_dir)
-
-        else:
-            # stereo or odd number of views...
-            for view in views:
-                if nuke.root()["proxy"].value():
-                    # proxy mode
-                    out_file = node.knob("proxy").evaluate(view=view)
-                else:
-                    out_file = node.knob("file").evaluate(view=view)
-
-                out_dir = os.path.dirname(out_file)
-                self._app.ensure_folder_exists(out_dir)
-
-        # add group/parent to list of currently rendering nodes:
-        grp = nuke.thisGroup()
-        if grp:
-            self.__currently_rendering_nodes.add(grp)
-
-        # Run any beforeRender code that the user added in the node's Python
-        # tab manually.
-        cmd = grp.knob("tk_before_render").value()
-
-        if cmd:
-            try:
-                exec(cmd)
-            except Exception:
-                self._app.log_error(
-                    "The Write node's beforeRender setting failed " "to execute!"
-                )
-                raise
-
-    def on_after_render_gizmo_callback(self):
-        """
-        Callback from nuke whenever a tank write node has finished being rendered
-        """
-        # the current node is the internal 'Write1' Write node:
-        node = nuke.thisNode()
-        if not node:
-            return
-
-        # remove parent/group from list of currently rendering nodes:
-        grp = nuke.thisGroup()
-        if grp and grp in self.__currently_rendering_nodes:
-            self.__currently_rendering_nodes.remove(grp)
-
-        # Run any afterRender code that the user added in the node's Python
-        # tab manually.
-        cmd = grp.knob("tk_after_render").value()
-
-        if cmd:
-            try:
-                exec(cmd)
-            except Exception:
-                self._app.log_error(
-                    "The Write node's afterRender setting failed " "to execute!"
-                )
-                raise
 
     ################################################################################################
     # Private methods

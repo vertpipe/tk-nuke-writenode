@@ -1,0 +1,36 @@
+Group {
+ name sgWrite1
+ tile_color 0xffffffff
+ note_font Verdana
+ addUserKnob {20 writeTab l "NFA ShotGrid Write"}
+ addUserKnob {41 channels T Write1.channels}
+ addUserKnob {1 output +DISABLED}
+ addUserKnob {68 category +DISABLED M {"undefined category"}}
+ addUserKnob {68 dataType l data -STARTLINE M {"undefined datatype"}}
+ addUserKnob {26 ""}
+ addUserKnob {41 file T Write1.file}
+ addUserKnob {26 ""}
+ addUserKnob {22 renderLocal l render T "def render_local():\n    import sgtk\n    eng = sgtk.platform.current_engine()\n    app = eng.apps\[\"tk-nuke-writenode\"]\n    write_node = nuke.thisNode()\n    app.render_local(write_node)\nrender_local()" +STARTLINE}
+ addUserKnob {22 renderOnFarm l "render on farm" -STARTLINE T "def render_farm():\n    import sgtk\n    eng = sgtk.platform.current_engine()\n    app = eng.apps\[\"tk-nuke-writenode\"]\n    write_node = nuke.thisNode()\n    app.render_farm(write_node)\nrender_farm()"}
+ addUserKnob {26 ""}
+ addUserKnob {22 readFromWrite l "create read from write" T "def read_from_write():\n    import sgtk\n    eng = sgtk.platform.current_engine()\n    app = eng.apps\[\"tk-nuke-writenode\"]\n    write_node = nuke.thisNode()\n    app.read_from_write(write_node)\nread_from_write()" +STARTLINE}
+ addUserKnob {26 isShotGridWriteNode l "" +STARTLINE +INVISIBLE}
+}
+ Input {
+  inputs 0
+  name Input
+  selected true
+  xpos -171
+  ypos -155
+ }
+ Write {
+  name Write1
+  xpos -171
+  ypos -88
+ }
+ Output {
+  name Output1
+  xpos -171
+  ypos -15
+ }
+end_group

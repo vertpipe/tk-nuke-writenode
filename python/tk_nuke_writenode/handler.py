@@ -202,7 +202,7 @@ class NukeWriteNodeHandler(object):
         write_nodes = []
         for node in all_nodes:
             if node.Class() == "Group":
-                if node["isShotGridWriteNode"]:
+                if node.knob("isShotGridWriteNode"):
                     write_nodes.append(node.name())
         return write_nodes
 

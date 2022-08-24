@@ -28,6 +28,7 @@ class TkNukeWriteNode(Application):
         self.tk_nuke_writenode = self.import_module("tk_nuke_writenode")
         self.handler = self.tk_nuke_writenode.NukeWriteNodeHandler()
 
+        # Registering commands
         create_write_node = lambda: self.handler.create_writenode()
         self.engine.register_command(
             "NFA ShotGrid Write Node",
@@ -52,6 +53,7 @@ class TkNukeWriteNode(Application):
             ),
         )
 
+        # Adding callbacks
         self.handler.add_callbacks()
 
     def destroy_app(self):
@@ -60,41 +62,105 @@ class TkNukeWriteNode(Application):
         self.handler.remove_callbacks()
 
     def render_local(self, node):
+        """Function to start rendering locally. Will set paths and render.
+
+        Args:
+            node (object): node to render locally
+        """
         self.handler.render_local(node)
 
     def render_farm(self, node):
+        """Function to start rendering on farm. Will set paths and
+        use Deadline submission.
+
+        Args:
+            node (object): node to submit for render on farm
+        """
         self.handler.render_farm(node)
 
     def read_from_write(self, node):
+        """Creates a read node from the selected write node
+
+        Args:
+            node (object): node to create read node from
+        """
         self.handler.read_from_write(node)
 
     def get_all_write_nodes(self):
+        """This function will return all existing ShotGrid write nodes
+        in the current script
+
+        Returns:
+            list: containing every ShotGrid write node
+        """
         write_nodes = self.handler.get_all_write_nodes()
         return write_nodes
 
     def get_node_render_template(self, node):
+        """Returns the render template used by the selected node
+
+        Args:
+            node (object): specific node to get the render template
+
+        Returns:
+            object: render template by ShotGrid template.yml
+        """
         render_template = self.handler.get_node_render_template(node)
         return render_template
 
     def get_node_publish_template(self, node):
+        """Returns the publish template used by the selected node
+
+        Args:
+            node (object): specific node to get the publish template
+
+        Returns:
+            object: publish template by ShotGrid template.yml
+        """
+
         publish_template = self.handler.get_node_publish_template(node)
         return publish_template
 
     def get_published_status(self, node):
+        """Check if selected node is already published
+
+        Args:
+            node (object): node to check for publishes
+
+        Returns:
+            bool: returns True if node is published, False if not
+        """
         is_published = self.handler.get_published_status(node)
         return is_published
 
     def get_colorspace(self, node):
+        """Get the colorspace the selected node is rendering
+
+        Args:
+            node (object): node to retrieve current colorspace
+
+        Returns:
+            str: colorspace used
+        """
         colorspace = self.handler.get_colorspace(node)
         return colorspace
 
     def update_read_nodes(self):
+        """Update all read nodes to use the published path"""
         self.handler.update_read_nodes()
 
     def convert_placeholder_nodes(self):
+        """Converts NoOp nodes used in the template to convert to
+        ShotGrid write nodes
+        """
         self.handler.convert_placeholder_nodes()
 
     @staticmethod
     def get_write_nodes():
-        # Empty function for legacy reasons to reset all render paths on file save, which is not what we want :)
+        """Empty function for legacy reasons to reset all
+        render paths on file save, which is not what we want
+
+        Returns:
+            list: empty
+        """
         return []

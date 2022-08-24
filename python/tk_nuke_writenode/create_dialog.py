@@ -4,7 +4,9 @@ import re
 
 
 class WriteNodePanel(nukescripts.PythonPanel):
-    def __init__(self, default_mode, types, main_category_name, main_write_name):
+    def __init__(
+        self, default_mode, types, main_category_name, main_write_name
+    ):
         nukescripts.PythonPanel.__init__(self, "Create SG Write Node")
 
         self.main_category_name = main_category_name
@@ -18,7 +20,9 @@ class WriteNodePanel(nukescripts.PythonPanel):
             "errorMessage", " ", '<p style="color:#FFA500">Invalid name</p>'
         )
         self.divider1 = nuke.Text_Knob("divider1", "")
-        self.category_knob = nuke.Enumeration_Knob("mode", "mode", list(types.keys()))
+        self.category_knob = nuke.Enumeration_Knob(
+            "mode", "mode", list(types.keys())
+        )
         self.data_knob = nuke.Enumeration_Knob("data", "data", [])
         self.divider2 = nuke.Text_Knob("divider2", "")
 
@@ -42,7 +46,9 @@ class WriteNodePanel(nukescripts.PythonPanel):
 
         # Set tooltips
         self.output_knob.setTooltip("Set the output name for the render node.")
-        self.category_knob.setTooltip("Select the category to set the render node to.")
+        self.category_knob.setTooltip(
+            "Select the category to set the render node to."
+        )
         self.data_knob.setTooltip("Set the data type to render.")
 
     def knobChanged(self, knob):

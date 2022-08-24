@@ -1,0 +1,8 @@
+{
+    "python.autoComplete.extraPaths": [
+        "c:\\Users\\Gilles\\.vscode\\extensions\\virgilsisoe.nuke-tools-0.7.1\\include\\nuke_stubs"
+    ],
+    "python.analysis.extraPaths": [
+        "c:\\Users\\Gilles\\.vscode\\extensions\\virgilsisoe.nuke-tools-0.7.1\\include\\nuke_stubs"
+    ]
+}

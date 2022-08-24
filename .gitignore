@@ -39,3 +39,6 @@ nosetests.xml
 
 # Test folder
 .test
+
+# Ignore vscode settings
+.vscode

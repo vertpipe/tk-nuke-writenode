@@ -78,6 +78,16 @@ class TkNukeWriteNode(Application):
         """
         self.handler.render_farm(node)
 
+    def knob_changed(self, node, knob):
+        """Function called whenever any knob changes on
+        the ShotGrid write node
+
+        Args:
+            node (attribute): node to process
+            knob (attribute): knob that has changed
+        """
+        self.handler.knob_changed(node, knob)
+
     def read_from_write(self, node):
         """Creates a read node from the selected write node
 

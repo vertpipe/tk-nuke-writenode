@@ -40,7 +40,7 @@ class NukeWriteNodeHandler(object):
 
         # If paths are set, render
         if prepared_write:
-            prepared_write["Render"].execute()
+            node.knob("Render").execute()
 
         # If paths hasn't been set, let user know something went wrong
         else:
@@ -155,6 +155,46 @@ class NukeWriteNodeHandler(object):
             self.__create_write(
                 write_node_settings, category, output_name, write_data
             )
+
+    def knob_changed(self, node, knob):
+        """Function called whenever any knob changes on
+        the ShotGrid write node
+
+        Args:
+            node (attribute): node to process
+            knob (attribute): knob that has changed
+        """
+
+        if knob.name() == "dataType":
+            # Get the settings the node has to be set to
+            configuration = self.__get_node_settings(node)
+
+            # Get internal node settings
+            settings = configuration.get("settings")
+
+            # Open to edit internal node
+            with node:
+                # Get node attribute
+                write_node = nuke.toNode("Write1")
+
+                # Set file type
+                write_node["file_type"].setValue(
+                    configuration.get("file_type")
+                )
+
+                # Set all knob settings
+                for knob, setting in settings.items():
+
+                    try:
+                        write_node[knob].setValue(setting)
+
+                    except Exception as e:
+                        logger.debug(
+                            "Could not apply %s to the knob %s, because %s"
+                            % (setting, knob, str(e))
+                        )
+
+            logger.debug("Updated node settings")
 
     def read_from_selected(self):
         """Create read node from the selected node"""
@@ -519,6 +559,7 @@ class NukeWriteNodeHandler(object):
         categories = []
         for key, value in write_node_settings.items():
             categories.append(key)
+
         created_write["category"].setValues(categories)
 
         # Set category user specified
@@ -599,6 +640,53 @@ class NukeWriteNodeHandler(object):
             write_node_settings[category_name] = write_node_names
 
         return write_node_settings
+
+    def __get_latest_version(self, node):
+        """This function will check on ShotGrid if there is a publish with
+        exactly the same name on the project.
+
+        Args:
+            node (attribute): node to retrieve publish status
+
+        Returns:
+            bool: If there is a publish existing it will return
+            "True", otherwise return a "False" value
+        """
+
+        sg = self.sg
+
+        # Get file path for node
+        file_name = node["file"].value()
+
+        # Get file name only
+        file_name = os.path.basename(file_name)
+
+        # Get current project ID
+        current_engine = sgtk.platform.current_engine()
+        current_context = current_engine.context
+        project_id = current_context.project["id"]
+
+        # Create the filter to search on ShotGrid for
+        # publishes with the same file name
+        filters = [
+            ["project", "is", {"type": "Project", "id": project_id}],
+            ["code", "is", file_name],
+        ]
+
+        # Search on ShotGrid
+        published_file = sg.find_one("PublishedFile", filters)
+
+        # If there is no publish, it will return a None value.
+        # So set the variable is_published to "False"
+        if published_file is None:
+            is_published = False
+
+        # If the value is not None, there is a publish with the same name.
+        # So set the variable is_published to "True"
+        else:
+            is_published = True
+
+        return is_published
 
     def __get_node_settings(self, node):
         """This function will go trough the dictionary to get the correct

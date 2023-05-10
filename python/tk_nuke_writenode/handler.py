@@ -259,6 +259,9 @@ class NukeWriteNodeHandler(object):
                     # Set path
                     read_node["file"].fromUserText(render_path)
 
+                    # Set colorspace
+                    read_node["colorspace"].setValue(self.get_colorspace(node))
+
                     # Set parameters
                     start_frame = int(min(frame_sequence[1]))
                     last_frame = int(max(frame_sequence[1]))

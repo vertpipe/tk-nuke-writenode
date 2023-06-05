@@ -8,340 +8,169 @@
 # agreement to the Shotgun Pipeline Toolkit Source Code License. All rights
 # not expressly granted therein are reserved by Shotgun Software Inc.
 
-"""
-Tank Write Node for Nuke
 
-"""
-
-import os
+from sgtk.platform import Application
 import nuke
-import tank
-from tank import TankError
+import os
 
 
-class NukeWriteNode(tank.platform.Application):
+class TkNukeWriteNode(Application):
+    """
+    The tk_nuke_writenode entry point. This class is responsible for initializing and tearing down
+    the application, handle menu registration etc.
+    """
+
     def init_app(self):
         """
         Called as the application is being initialized
         """
-        # import module and create handler
-        tk_nuke_writenode = self.import_module("tk_nuke_writenode")
-        self.__write_node_handler = tk_nuke_writenode.TankWriteNodeHandler(self)
 
-        # patch handler onto nuke module for access in WriteNode knobs
-        nuke._shotgun_write_node_handler = self.__write_node_handler
-        # and for backwards compatibility!
-        nuke._tank_write_node_handler = self.__write_node_handler
+        self.tk_nuke_writenode = self.import_module("tk_nuke_writenode")
+        self.handler = self.tk_nuke_writenode.NukeWriteNodeHandler()
 
-        # add WriteNodes to nuke menu
-        self.__add_write_node_commands()
+        # Registering commands
+        create_write_node = lambda: self.handler.create_writenode()
+        self.engine.register_command(
+            "NFA ShotGrid Write Node",
+            create_write_node,
+            dict(
+                type="node",
+                icon="Write.png",
+                hotkey="w",
+                context=self.context,
+            ),
+        )
 
-        # add callbacks:
-        self.__write_node_handler.add_callbacks()
+        read_from_write = lambda: self.handler.read_from_selected()
+        self.engine.register_command(
+            "Create Read from Write",
+            read_from_write,
+            dict(
+                type="menu",
+                icon="Read.png",
+                hotkey="ctrl+r",
+                context=self.context,
+            ),
+        )
 
-    @property
-    def context_change_allowed(self):
-        """
-        Specifies that context changes are allowed.
-        """
-        return True
+        # Adding callbacks
+        self.handler.add_callbacks()
 
     def destroy_app(self):
-        """
-        Called when the app is unloaded/destroyed
-        """
         self.log_debug("Destroying tk-nuke-writenode app")
 
-        # remove any callbacks that were registered by the handler:
-        self.__write_node_handler.remove_callbacks()
+        self.handler.remove_callbacks()
 
-        # clean up the nuke module:
-        if hasattr(nuke, "_shotgun_write_node_handler"):
-            del nuke._shotgun_write_node_handler
-        if hasattr(nuke, "_tank_write_node_handler"):
-            del nuke._tank_write_node_handler
+    def render_local(self, node):
+        """Function to start rendering locally. Will set paths and render.
 
-    def post_context_change(self, old_context, new_context):
+        Args:
+            node (object): node to render locally
         """
-        Handles refreshing the render paths of all Shotgun write nodes
-        after a context change has been completed.
+        self.handler.render_local(node)
 
-        :param old_context: The sgtk.context.Context being switched from.
-        :param new_context: The sgtk.context.Context being switched to.
-        """
+    def render_farm(self, node):
+        """Function to start rendering on farm. Will set paths and
+        use Deadline submission.
 
-        self.__write_node_handler.populate_profiles_from_settings()
-        self.__write_node_handler.populate_script_template()
-        self.__add_write_node_commands(new_context)
+        Args:
+            node (object): node to submit for render on farm
+        """
+        self.handler.render_farm(node)
 
-        # now the writenode handler settings have been updated we can update the paths of all existing SG writenodes
-        for node in self.get_write_nodes():
-            # Although there are nuke callbacks to handle setting up the new node; on automatic context change
-            # these are triggered before the engine changes context, so we must manually call it here.
-            # this will force the path to reset and the profiles to be rebuilt.
-            self.__write_node_handler.setup_new_node(node)
+    def knob_changed(self, node, knob):
+        """Function called whenever any knob changes on
+        the ShotGrid write node
 
-    def process_placeholder_nodes(self):
+        Args:
+            node (attribute): node to process
+            knob (attribute): knob that has changed
         """
-        Convert any placeholder nodes to TK Write Nodes
-        """
-        self.__write_node_handler.process_placeholder_nodes()
+        self.handler.knob_changed(node, knob)
 
-    # interface for other apps to query write node info:
-    #
+    def read_from_write(self, node):
+        """Creates a read node from the selected write node
 
-    # access general information:
-    def get_write_nodes(self):
+        Args:
+            node (object): node to create read node from
         """
-        Return list of all write nodes
-        """
-        return self.__write_node_handler.get_nodes()
+        self.handler.read_from_write(node)
 
-    def get_node_name(self, node):
-        """
-        Return the name for the specified node
-        """
-        return self.__write_node_handler.get_node_name(node)
+    def get_all_write_nodes(self):
+        """This function will return all existing ShotGrid write nodes
+        in the current script
 
-    def get_node_profile_name(self, node):
+        Returns:
+            list: containing every ShotGrid write node
         """
-        Return the name of the profile the specified node
-        is using
-        """
-        return self.__write_node_handler.get_node_profile_name(node)
-
-    def get_node_tank_type(self, node):
-        """
-        Return the tank type for the specified node
-
-        Note: Legacy version with old 'Tank Type' name - use
-        get_node_published_file_type instead!
-        """
-        return self.__write_node_handler.get_node_tank_type(node)
-
-    def get_node_published_file_type(self, node):
-        """
-        Return the published file type for the specified node
-        """
-        return self.__write_node_handler.get_node_tank_type(node)
-
-    def is_node_render_path_locked(self, node):
-        """
-        Determine if the render path for the specified node
-        is locked.  The path will become locked if the cached
-        version of the path no longer matches the computed
-        path (using the appropriate render template).  This
-        can happen if the file is moved on disk or if the template
-        is changed.
-        """
-        return self.__write_node_handler.render_path_is_locked(node)
-
-    # access full-res render information:
-    def get_node_render_path(self, node):
-        """
-        Return the render path for the specified node
-        """
-        return self.__write_node_handler.compute_render_path(node)
-
-    def get_node_render_files(self, node):
-        """
-        Return the list of rendered files for the node
-        """
-        return self.__write_node_handler.get_files_on_disk(node)
+        write_nodes = self.handler.get_all_write_nodes()
+        return write_nodes
 
     def get_node_render_template(self, node):
+        """Returns the render template used by the selected node
+
+        Args:
+            node (object): specific node to get the render template
+
+        Returns:
+            object: render template by ShotGrid template.yml
         """
-        Return the render template for the specified node
-        """
-        return self.__write_node_handler.get_render_template(node)
+        render_template = self.handler.get_node_render_template(node)
+        return render_template
 
     def get_node_publish_template(self, node):
-        """
-        Return the publish template for the specified node
-        """
-        return self.__write_node_handler.get_publish_template(node)
+        """Returns the publish template used by the selected node
 
-    # access proxy-res render information:
-    def get_node_proxy_render_path(self, node):
-        """
-        Return the render path for the specified node
-        """
-        return self.__write_node_handler.compute_proxy_path(node)
+        Args:
+            node (object): specific node to get the publish template
 
-    def get_node_proxy_render_files(self, node):
-        """
-        Return the list of rendered files for the node
-        """
-        return self.__write_node_handler.get_proxy_files_on_disk(node)
-
-    def get_node_proxy_render_template(self, node):
-        """
-        Return the render template for the specified node
-        """
-        return self.__write_node_handler.get_proxy_render_template(node)
-
-    def get_node_proxy_publish_template(self, node):
-        """
-        Return the publish template for the specified node
-        """
-        return self.__write_node_handler.get_proxy_publish_template(node)
-
-    # useful utility functions:
-    def generate_node_thumbnail(self, node):
-        """
-        Generate a thumnail for the specified node
-        """
-        return self.__write_node_handler.generate_thumbnail(node)
-
-    def reset_node_render_path(self, node):
-        """
-        Reset the render path of the specified node.  This
-        will force the render path to be updated based on
-        the current script path and configuration.
-
-        Note, this should really never be needed now that the
-        path is reset automatically when the user changes something.
-        """
-        self.__write_node_handler.reset_render_path(node)
-
-    def convert_to_write_nodes(self, show_warning=False):
-        """
-        Convert all Shotgun write nodes found in the current Script to regular
-        Nuke Write nodes.  Additional toolkit information will be stored on
-        additional user knobs named 'tk_*'
-
-        :param show_warning: Optional bool that sets whether a warning box should be displayed to the user;
-         defaults to False.
-        :param create_folders: Optional bool that sets whether the operation will create the required output folders;
-         defaults to False
+        Returns:
+            object: publish template by ShotGrid template.yml
         """
 
-        # By default we want to convert the write nodes, unless the warning is shown and the user chooses to abort.
-        continue_with_convert = True
+        publish_template = self.handler.get_node_publish_template(node)
+        return publish_template
 
-        if show_warning:
-            # defer importing the QT module so the app doesn't require QT unless running this method with the warning.
-            from sgtk.platform.qt import QtGui
+    def get_published_status(self, node):
+        """Check if selected node is already published
 
-            res = QtGui.QMessageBox.question(
-                None,
-                "Convert All SG Write Nodes?",
-                "This will convert all ShotGrid write nodes to standard write nodes."
-                "\nOK to proceed?",
-                QtGui.QMessageBox.Yes | QtGui.QMessageBox.No,
-            )
+        Args:
+            node (object): node to check for publishes
 
-            if res != QtGui.QMessageBox.Yes:
-                # User chose to abort the operation, we should not convert the write nodes
-                continue_with_convert = False
-
-        if continue_with_convert:
-            self.__write_node_handler.convert_sg_to_nuke_write_nodes()
-
-    def convert_from_write_nodes(self, show_warning=False):
+        Returns:
+            bool: returns True if node is published, False if not
         """
-        Convert all regular Nuke Write nodes that have previously been converted
-        from Shotgun Write nodes, back into Shotgun Write nodes.
+        is_published = self.handler.get_published_status(node)
+        return is_published
 
-        :param show_warning: Optional bool that sets whether a warning box should be displayed to the user;
-         defaults to False.
+    def get_colorspace(self, node):
+        """Get the colorspace the selected node is rendering
+
+        Args:
+            node (object): node to retrieve current colorspace
+
+        Returns:
+            str: colorspace used
         """
+        colorspace = self.handler.get_colorspace(node)
+        return colorspace
 
-        # By default we want to convert the write nodes, unless the warning is shown and the user chooses to abort.
-        continue_with_convert = True
+    def update_read_nodes(self):
+        """Update all read nodes to use the published path"""
+        self.handler.update_read_nodes()
 
-        if show_warning:
-            # defer importing the QT module so the app doesn't require QT unless running this method with the warning.
-            from sgtk.platform.qt import QtGui
-
-            res = QtGui.QMessageBox.question(
-                None,
-                "Convert All Write Nodes?",
-                "This will convert any ShotGrid Write Nodes that have been converted "
-                "into standard write nodes back to their original form."
-                "\nOK to proceed?",
-                QtGui.QMessageBox.Yes | QtGui.QMessageBox.No,
-            )
-
-            if res != QtGui.QMessageBox.Yes:
-                # User chose to abort the operation, we should not convert the write nodes
-                continue_with_convert = False
-
-        if continue_with_convert:
-            self.__write_node_handler.convert_nuke_to_sg_write_nodes()
-
-    def create_new_write_node(self, profile_name):
+    def convert_placeholder_nodes(self):
+        """Converts NoOp nodes used in the template to convert to
+        ShotGrid write nodes
         """
-        Creates a Shotgun write node using the provided profile_name.
+        self.handler.convert_placeholder_nodes()
+
+    @staticmethod
+    def get_write_nodes():
+        """Empty function for legacy reasons to reset all
+        render paths on file save, which is not what we want
+
+        Returns:
+            list: empty
         """
-        self.__write_node_handler.create_new_node(profile_name)
-
-    # Private methods
-    #
-    def __add_write_node_commands(self, context=None):
-        """
-        Creates write node menu entries for all write node configurations
-        and the convert to and from Shotgun write node actions if configured to do so.
-        """
-        context = context or self.context
-
-        write_node_icon = os.path.join(self.disk_location, "resources", "tk2_write.png")
-
-        for profile_name in self.__write_node_handler.profile_names:
-            # add to toolbar menu
-            cb_fn = lambda pn=profile_name: self.__write_node_handler.create_new_node(
-                pn
-            )
-            self.engine.register_command(
-                "%s [Shotgun]" % profile_name,
-                cb_fn,
-                dict(
-                    type="node",
-                    icon=write_node_icon,
-                    context=context,
-                ),
-            )
-
-        # Show the convert actions in the Menu if configured to do so
-        if self.get_setting("show_convert_actions"):
-
-            # We only want to show the convert methods if there are no promoted knobs,
-            # as these aren't supported when converting back
-            # todo: We should check the settings and then scan the scene to see if any SG write nodes use promoted knobs
-            write_nodes = self.get_setting("write_nodes")
-            promoted_knob_write_nodes = next(
-                (a_node for a_node in write_nodes if a_node["promote_write_knobs"]),
-                None,
-            )
-
-            if not promoted_knob_write_nodes:
-                # no presets use promoted knobs so we are OK to register the menus.
-
-                convert_to_write_nodes_action = lambda: self.convert_to_write_nodes(
-                    show_warning=True
-                )
-                convert_from_write_nodes_action = lambda: self.convert_from_write_nodes(
-                    show_warning=True
-                )
-
-                self.engine.register_command(
-                    "Convert SG Write Nodes to Write Nodes...",
-                    convert_to_write_nodes_action,
-                    {
-                        "type": "context_menu",
-                        "icon": os.path.join(self.disk_location, "icon_256.png"),
-                    },
-                )
-                self.engine.register_command(
-                    "Convert Write Nodes back to SG format...",
-                    convert_from_write_nodes_action,
-                    {
-                        "type": "context_menu",
-                        "icon": os.path.join(self.disk_location, "icon_256.png"),
-                    },
-                )
-            else:
-                self.log_debug(
-                    "Convert menu options were disabled as "
-                    "promoted knobs were detected in the app settings."
-                )
+        return []

@@ -1,0 +1,49 @@
+Group {
+ name sgWrite1
+ tile_color 0xffffffff
+ note_font Verdana
+ addUserKnob {20 writeTab l "NFA ShotGrid Write"}
+ addUserKnob {41 channels T Write1.channels}
+ addUserKnob {1 output +DISABLED}
+ addUserKnob {41 category T sgWriteControls.category}
+ addUserKnob {41 dataType l data -STARTLINE T sgWriteControls.dataType}
+ addUserKnob {26 ""}
+ addUserKnob {41 file T Write1.file}
+ addUserKnob {26 ""}
+ addUserKnob {22 renderLocal l render T "def render_local():\n    import sgtk\n    eng = sgtk.platform.current_engine()\n    app = eng.apps\[\"tk-nuke-writenode\"]\n    write_node = nuke.thisNode()\n    app.render_local(write_node)\nrender_local()" +STARTLINE}
+ addUserKnob {22 renderOnFarm l "render on farm" -STARTLINE T "def render_farm():\n    import sgtk\n    eng = sgtk.platform.current_engine()\n    app = eng.apps\[\"tk-nuke-writenode\"]\n    write_node = nuke.thisNode()\n    app.render_farm(write_node)\nrender_farm()"}
+ addUserKnob {41 Render +INVISIBLE T Write1.Render}
+ addUserKnob {26 ""}
+ addUserKnob {22 readFromWrite l "create read from write" T "def read_from_write():\n    import sgtk\n    eng = sgtk.platform.current_engine()\n    app = eng.apps\[\"tk-nuke-writenode\"]\n    write_node = nuke.thisNode()\n    app.read_from_write(write_node)\nread_from_write()" +STARTLINE}
+ addUserKnob {26 isShotGridWriteNode l "" +STARTLINE +INVISIBLE}
+}
+ Input {
+  inputs 0
+  name Input
+  xpos -171
+  ypos -155
+ }
+ Write {
+  name Write1
+  xpos -171
+  ypos -88
+ }
+ Output {
+  name Output1
+  xpos -171
+  ypos -15
+ }
+ NoOp {
+  inputs 0
+  name sgWriteControls
+  selected true
+  xpos 128
+  ypos -86
+  hide_input true
+  addUserKnob {20 sgWriteControls}
+  addUserKnob {68 category +DISABLED M {"undefined category"}}
+  addUserKnob {68 dataType l data -STARTLINE M {"undefined datatype"}}
+  addUserKnob {26 ""}
+  addUserKnob {26 help_1 l "" +STARTLINE T "<i><p>This node is separated to call the knobChanged callback only for these nodes.</p>\n\n<p>Not for example when the node's position has changed.</p>\n\n<p>This will just improve efficiency quite a bit</p>\n</i>"}
+ }
+end_group

@@ -31,7 +31,7 @@ class TkNukeWriteNode(Application):
         # Registering commands
         create_write_node = lambda: self.handler.create_writenode()
         self.engine.register_command(
-            "NFA ShotGrid Write Node",
+            "ShotGrid Write Node",
             create_write_node,
             dict(
                 type="node",

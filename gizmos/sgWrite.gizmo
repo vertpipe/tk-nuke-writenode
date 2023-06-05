@@ -2,7 +2,7 @@ Group {
  name sgWrite1
  tile_color 0xffffffff
  note_font Verdana
- addUserKnob {20 writeTab l "NFA ShotGrid Write"}
+ addUserKnob {20 writeTab l "ShotGrid Write"}
  addUserKnob {41 channels T Write1.channels}
  addUserKnob {1 output +DISABLED}
  addUserKnob {41 category T sgWriteControls.category}
